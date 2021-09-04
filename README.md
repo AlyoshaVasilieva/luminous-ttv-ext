@@ -31,8 +31,8 @@ Run `npm run build`.
 ### Issues
 
 * In Firefox, and browsers built using its code, the extension's error failsafe code 
-  can't be used. If this program isn't running, you won't be able to view any streams
-  on Twitch. (In Chrome-like browsers, the extension will fall back to the
+  can't be used. If the server isn't running, you won't be able to view any streams
+  on Twitch. (In Chrome-like browsers, this extension will fall back to the
   ad-filled stream when anything goes wrong.)
 * A white pixel will appear in the bottom left of the Twitch page. This is an ad iframe
   that fails to load due to being blocked.
