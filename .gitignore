@@ -1,0 +1,7 @@
+dist/
+node_modules/
+.idea/**/workspace.xml
+.idea/**/misc.xml
+.idea/**/modules.xml
+.idea/**/city17-ext.iml
+.idea/**/dataSources.local.xml

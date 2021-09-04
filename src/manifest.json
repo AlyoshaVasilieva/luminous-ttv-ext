@@ -1,0 +1,37 @@
+{
+  "manifest_version": 2,
+  "name": "Luminous TTV",
+  "version": "0.7.5",
+  "description": "Avoid Twitch livestream ads by retrieving the playlist from Russia",
+  "background": {
+    "scripts": [
+      "ts/background.ts"
+    ],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.twitch.tv/*"
+      ],
+      "js": [
+        "ts/content.ts"
+      ],
+      "css": [
+        "css/content.css"
+      ]
+    }
+  ],
+  "icons": {
+    "128": "images/icon.png"
+  },
+  "permissions": [
+    "activeTab",
+    "webRequest",
+    "webRequestBlocking",
+    "http://localhost/*",
+    "https://*.twitch.tv/*",
+    "https://usher.ttvnw.net/*",
+    "https://*.amazon-adsystem.com/*"
+  ]
+}
