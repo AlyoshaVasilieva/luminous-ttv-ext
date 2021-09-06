@@ -21,7 +21,9 @@ Prerequisite: The [server][srv] must be running on your machine for this extensi
 
 Prerequisite: Ensure [you have Node and NPM installed*][npm].
 
-Run `npm run build`.
+1. `npm install`
+2. `npm run build`
+3. Extension files including ZIP are output to `dist` directory.
 
 *: That link is the fast way. [Read this guide for the correct way][guide].
 
