@@ -1,6 +1,6 @@
 {
   "name": "luminous-ttv",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "Avoid Twitch livestream ads by retrieving the playlist from Russia",
   "main": "background.js",
   "author": "Malloc Voidstar",
