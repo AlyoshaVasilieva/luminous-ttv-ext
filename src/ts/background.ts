@@ -77,7 +77,6 @@ function redirectM3U(details: WebRequestBodyDetails): BlockingResponse | void {
 
 /** Log an error with a (hopefully) detailed message, both to the console and a toast notification. */
 function logError(type: string, req: XMLHttpRequest) {
-    let message = "Proxy error, you will see ads. Is the server running?";
     try {
         if (req.status === 404 && type === "hls") {
             // When loading a streamer's page (even sometimes the /videos page?) Twitch seems to attempt to
@@ -95,6 +94,7 @@ function logError(type: string, req: XMLHttpRequest) {
     } catch (e) {
         // handled with default text
     }
+    const message = "Proxy error, you will see ads. Is the server running?";
     sendError({maybeFake: false, message: message});
 }
 
@@ -111,7 +111,8 @@ function sendError(err: ExtError) {
             if (tabs.length === 0 || typeof tabs[0].id === "undefined") {
                 return;
             }
-            return browser.tabs.sendMessage(tabs[0].id, err);
+            // I don't understand JS Promises
+            return browser.tabs.sendMessage(tabs[0].id, err).catch(e => console.log(`failed to send error due to ${e}`));
         }, e => {
             console.log(`failed to send error due to ${e}`);
         });
