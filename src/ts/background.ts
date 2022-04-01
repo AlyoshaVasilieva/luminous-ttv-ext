@@ -3,18 +3,6 @@
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import WebRequestBodyDetails = browser.webRequest._OnBeforeRequestDetails;
 
-browser.webRequest.onBeforeRequest.addListener(
-    redirectM3U,
-    {urls: ["https://usher.ttvnw.net/api/channel/hls/*", "https://usher.ttvnw.net/vod/*"]},
-    ["blocking"]
-);
-
-browser.webRequest.onBeforeRequest.addListener(
-    blockAdServer,
-    {urls: ["https://*.amazon-adsystem.com/*"]},
-    ["blocking"]
-);
-
 /** Log the request's URL and tell Chrome to block it. */
 function blockAdServer(details: WebRequestBodyDetails): BlockingResponse | void {
     // This function should only be hit on VODs, since streams won't be serving ads.
@@ -30,50 +18,67 @@ function blockAdServer(details: WebRequestBodyDetails): BlockingResponse | void 
 /** Tell TypeScript about a legacy Firefox API. */
 declare const InstallTrigger: void;
 
-/** Attempt to grab the M3U8 from the relay server, triggering a redirect to a data URL if successful. */
-function redirectM3U(details: WebRequestBodyDetails): BlockingResponse | void {
-    const base = "http://localhost:9595";
-    const source = /\/(hls|vod)\/(.+)\.m3u8(.+)/.exec(details.url);
-    if (source === null) {
-        console.log(`unmatched URL, source ${details.url}`);
-        return;
-    }
+browser.storage.sync.get({
+    address: "localhost",
+    port: 9595
+}).then((items) => {
+    browser.webRequest.onBeforeRequest.addListener(
+        redirectM3U,
+        {urls: ["https://usher.ttvnw.net/api/channel/hls/*", "https://usher.ttvnw.net/vod/*"]},
+        ["blocking"]
+    );
 
-    const type = source[1];
-    const endpoint = type === "hls" ? "/live/" : "/vod/";
-    const id = source[2];
-    const query = source[3];
-    const url = `${base}${endpoint}${id}${query}`;
-    if (typeof InstallTrigger !== 'undefined') {
-        // Firefox blocks redirecting to a data URL, citing CORS.
-        // I'm pretty sure this is a bug, but I've tried reporting bugs to them before.
-        // Skip all the nice error presentation and just go for it.
-        // If the server fails, Twitch's player will retry a bit before error 2000.
-        // Maybe it's https://bugzilla.mozilla.org/show_bug.cgi?id=1267027 from 2016?
+    /** Attempt to grab the M3U8 from the relay server, triggering a redirect to a data URL if successful. */
+    function redirectM3U(details: WebRequestBodyDetails): BlockingResponse | void {
+        const base = `http://${items.address}:${items.port}`;
+        const source = /\/(hls|vod)\/(.+)\.m3u8(.+)/.exec(details.url);
+        if (source === null) {
+            console.log(`unmatched URL, source ${details.url}`);
+            return;
+        }
+
+        const type = source[1];
+        const endpoint = type === "hls" ? "/live/" : "/vod/";
+        const id = source[2];
+        const query = source[3];
+        const url = `${base}${endpoint}${id}${query}`;
+        if (typeof InstallTrigger !== 'undefined') {
+            // Firefox blocks redirecting to a data URL, citing CORS.
+            // I'm pretty sure this is a bug, but I've tried reporting bugs to them before.
+            // Skip all the nice error presentation and just go for it.
+            // If the server fails, Twitch's player will retry a bit before error 2000.
+            // Maybe it's https://bugzilla.mozilla.org/show_bug.cgi?id=1267027 from 2016?
+            console.log(`redirecting ${type} ${id} to ${url}`);
+            return {redirectUrl: url};
+        }
+        const req = new XMLHttpRequest();
+        console.log(`calling ${url}`);
+        req.open("GET", url, false); // Ignore the deprecation warning.
+        try {
+            req.send(); // if (local?) server is down this throws
+        } catch (e) {
+            console.error(e);
+            logError(type, req);
+            return;
+        }
+        if (req.status !== 200 || !req.response.startsWith("#EXTM3U")) {
+            // the #EXTM3U check is paranoid, but avoids an outright failure on weirdness
+            console.log(`grabbing m3u8 failed, code ${req.status}, response: ${req.response}`);
+            logError(type, req);
+            return;
+        }
+
+        const m3u8 = stringToBase64(req.response);
         console.log(`redirecting ${type} ${id}`);
-        return {redirectUrl: url};
+        return {redirectUrl: `data:application/vnd.apple.mpegurl;base64,${m3u8}`};
     }
-    const req = new XMLHttpRequest();
-    console.log(`calling ${url}`);
-    req.open("GET", url, false); // Ignore the deprecation warning.
-    try {
-        req.send(); // if (local?) server is down this throws
-    } catch (e) {
-        console.error(e);
-        logError(type, req);
-        return;
-    }
-    if (req.status !== 200 || !req.response.startsWith("#EXTM3U")) {
-        // the #EXTM3U check is paranoid, but avoids an outright failure on weirdness
-        console.log(`grabbing m3u8 failed, code ${req.status}, response: ${req.response}`);
-        logError(type, req);
-        return;
-    }
+}, e => console.log("critical failure, can't get storage: ", e));
 
-    const m3u8 = stringToBase64(req.response);
-    console.log(`redirecting ${type} ${id}`);
-    return {redirectUrl: `data:application/vnd.apple.mpegurl;base64,${m3u8}`};
-}
+browser.webRequest.onBeforeRequest.addListener(
+    blockAdServer,
+    {urls: ["https://*.amazon-adsystem.com/*"]},
+    ["blocking"]
+);
 
 /** Log an error with a (hopefully) detailed message, both to the console and a toast notification. */
 function logError(type: string, req: XMLHttpRequest) {
@@ -114,7 +119,7 @@ function sendError(err: ExtError) {
             // I don't understand JS Promises
             return browser.tabs.sendMessage(tabs[0].id, err).catch(e => console.log(`failed to send error due to ${e}`));
         }, e => {
-            console.log(`failed to send error due to ${e}`);
+            console.log("failed to send error due to", e);
         });
 }
 
