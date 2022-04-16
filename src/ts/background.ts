@@ -19,8 +19,7 @@ function blockAdServer(details: WebRequestBodyDetails): BlockingResponse | void 
 declare const InstallTrigger: void;
 
 browser.storage.sync.get({
-    address: "localhost",
-    port: 9595
+    address: "http://localhost:9595",
 }).then((items) => {
     browser.webRequest.onBeforeRequest.addListener(
         redirectM3U,
@@ -30,7 +29,14 @@ browser.storage.sync.get({
 
     /** Attempt to grab the M3U8 from the relay server, triggering a redirect to a data URL if successful. */
     function redirectM3U(details: WebRequestBodyDetails): BlockingResponse | void {
-        const base = `http://${items.address}:${items.port}`;
+        let base: string = items.address;
+        // try to prevent some possible user errors:
+        if (!base.startsWith("http")) {
+            base = "http://" + base;
+        }
+        if (base.endsWith("/")) {
+            base = base.slice(0, -1);
+        }
         const source = /\/(hls|vod)\/(.+)\.m3u8(.+)/.exec(details.url);
         if (source === null) {
             console.log(`unmatched URL, source ${details.url}`);
@@ -41,15 +47,34 @@ browser.storage.sync.get({
         const endpoint = type === "hls" ? "/live/" : "/vod/";
         const id = source[2];
         const query = source[3];
-        const url = `${base}${endpoint}${id}${query}`;
+        const url = new URL(`${base}${endpoint}${id}${query}`);
+        for (const key of ["sig", "token", "p", "play_session_id"]) {
+            url.searchParams.delete(key); // remove unnecessary, potentially identifying data
+        }
         if (typeof InstallTrigger !== 'undefined') {
             // Firefox blocks redirecting to a data URL, citing CORS.
             // I'm pretty sure this is a bug, but I've tried reporting bugs to them before.
-            // Skip all the nice error presentation and just go for it.
+            // Try to check if the server is online, and redirect if it claims it is.
             // If the server fails, Twitch's player will retry a bit before error 2000.
             // Maybe it's https://bugzilla.mozilla.org/show_bug.cgi?id=1267027 from 2016?
+            const statusUrl = `${base}/stat/`;
+            const req = new XMLHttpRequest();
+            try {
+                req.open("GET", statusUrl, false);
+                req.send();
+                const status = JSON.parse(req.response);
+                if (!status.online) {
+                    sendError({maybeFake: false, message: "Proxy server reports it is offline."})
+                    return;
+                }
+            } catch (e) {
+                console.error(e);
+                logError(type, req);
+                return;
+            }
+            // TODO: All this code is pretty ugly.
             console.log(`redirecting ${type} ${id} to ${url}`);
-            return {redirectUrl: url};
+            return {redirectUrl: url.href};
         }
         const req = new XMLHttpRequest();
         console.log(`calling ${url}`);
