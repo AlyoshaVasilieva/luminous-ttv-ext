@@ -5,3 +5,5 @@ node_modules/
 .idea/**/modules.xml
 .idea/**/city17-ext.iml
 .idea/**/dataSources.local.xml
+*.crx
+*.pem
