@@ -1,17 +1,39 @@
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <title>Luminous TTV options</title>
+    <style>
+        label {
+            float: left;
+        }
+
+        span {
+            display: block;
+            overflow: hidden;
+            padding-left: 4px;
+            padding-right: 10px;
+        }
+
+        input {
+            width: 100%;
+        }
+
+        input:invalid {
+            background-color: #FFDDDD;
+        }
+    </style>
 </head>
 
-<body>
+<body style="min-width: 300px">
 <form>
-    <label>Server address</label>
-    <input type="text" id="address" >
-    <br />
+    <label for="address">Server address</label>
+    <span><input type="text" id="address" pattern="https?:\/\/.*(?<!\/)$"></span>
+    <br/>
     <button type="submit">Save</button>
 </form>
+<p>Restart your browser after saving.</p>
 <script src="../ts/options.ts"></script>
 </body>
 
