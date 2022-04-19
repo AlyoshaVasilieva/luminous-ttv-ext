@@ -51,12 +51,13 @@ browser.storage.sync.get({
         for (const key of ["sig", "token", "p", "play_session_id"]) {
             url.searchParams.delete(key); // remove unnecessary, potentially identifying data
         }
+        // If we're on Firefox, behave differently
         if (typeof InstallTrigger !== 'undefined') {
             // Firefox blocks redirecting to a data URL, citing CORS.
             // I'm pretty sure this is a bug, but I've tried reporting bugs to them before.
-            // Try to check if the server is online, and redirect if it claims it is.
-            // If the server fails, Twitch's player will retry a bit before error 2000.
             // Maybe it's https://bugzilla.mozilla.org/show_bug.cgi?id=1267027 from 2016?
+            // Try to check if the server is online, and redirect if it claims it is.
+            // If the server is malfunctioning, Twitch's player will retry a bit before error 2000.
             const statusUrl = `${base}/stat/`;
             const req = new XMLHttpRequest();
             try {
@@ -76,6 +77,7 @@ browser.storage.sync.get({
             console.log(`redirecting ${type} ${id} to ${url}`);
             return {redirectUrl: url.href};
         }
+        // otherwise, proceed as normal
         const req = new XMLHttpRequest();
         console.log(`calling ${url}`);
         req.open("GET", url, false); // Ignore the deprecation warning.
